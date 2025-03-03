@@ -1,0 +1,85 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+
+app.use(cors());
+app.use(express.json());
+
+
+mongoose.connect('your_mongodb_uri_here', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('MongoDB connected'))
+  .catch(err => console.log(err));
+
+
+const recipeSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  ingredients: { type: [String], required: true },
+  instructions: { type: String, required: true },
+  author: { type: String, required: true },
+  image: { type: String },
+  prepTime: { type: Number },
+  cookTime: { type: Number },
+  servings: { type: Number }
+});
+
+const Recipe = mongoose.model('Recipe', recipeSchema);
+
+
+app.get('/recipes', async (req, res) => {
+  try {
+    const recipes = await Recipe.find();
+    res.json(recipes);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
+
+app.get('/recipes/:id', async (req, res) => {
+  try {
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) return res.status(404).send('Recipe not found');
+    res.json(recipe);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
+
+app.post('/recipes', async (req, res) => {
+  const { title, ingredients, instructions, author, image, prepTime, cookTime, servings } = req.body;
+
+  try {
+    const newRecipe = new Recipe({ title, ingredients, instructions, author, image, prepTime, cookTime, servings });
+    await newRecipe.save();
+    res.status(201).json(newRecipe);
+  } catch (error) {
+    res.status(400).send('Error saving recipe');
+  }
+});
+
+app.put('/recipes/:id', async (req, res) => {
+  try {
+    const updatedRecipe = await Recipe.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedRecipe) return res.status(404).send('Recipe not found');
+    res.json(updatedRecipe);
+  } catch (error) {
+    res.status(500).send('Error updating recipe');
+  }
+});
+
+app.delete('/recipes/:id', async (req, res) => {
+  try {
+    await Recipe.findByIdAndDelete(req.params.id);
+    res.status(200).send('Recipe deleted');
+  } catch (error) {
+    res.status(500).send('Error deleting recipe');
+  }
+});
+
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
